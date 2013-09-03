@@ -23,19 +23,19 @@ package com.dawsonsystems.session;
 import com.mongodb.*;
 
 import org.apache.catalina.*;
-import org.apache.catalina.session.StandardManager;
+import org.apache.catalina.session.ManagerBase;
 import org.apache.catalina.session.StandardSession;
+import org.bson.types.ObjectId;
 
-import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MongoSessionManager extends StandardManager implements {
+public class MongoSessionManager extends ManagerBase {
 	private static Logger log = Logger.getLogger("MongoManager");
 	protected static String host = "localhost";
 	protected static int port = 27017;
@@ -50,9 +50,48 @@ public class MongoSessionManager extends StandardManager implements {
 
 	// Either 'kryo' or 'java'
 	private String serializationStrategyClass = "com.dawsonsystems.session.JavaSerializer";
-
-	private Container container;
+	private Context context;
 	private int maxInactiveInterval;
+
+	public void setMongo(Mongo mongo) {
+		this.mongo = mongo;
+	}
+
+	public void setDb(DB db) {
+		this.db = db;
+	}
+
+	public void setSlaveOk(boolean slaveOk) {
+		this.slaveOk = slaveOk;
+	}
+
+	public void setTrackerValve(MongoSessionTrackerValve trackerValve) {
+		this.trackerValve = trackerValve;
+	}
+
+	public void setCurrentSession(ThreadLocal<StandardSession> currentSession) {
+		this.currentSession = currentSession;
+	}
+
+	public void setSerializer(Serializer serializer) {
+		this.serializer = serializer;
+	}
+
+	public void setSerializationStrategyClass(String serializationStrategyClass) {
+		this.serializationStrategyClass = serializationStrategyClass;
+	}
+
+	public void setContext(Context context) {
+		this.context = context;
+	}
+
+	public String getInfo() {
+		return "Mongo Session Manager";
+	}
+
+	public int getSessionIdLength() {
+		return 24;
+	}
 
 	public void add(Session session) {
 		try {
@@ -61,12 +100,14 @@ public class MongoSessionManager extends StandardManager implements {
 			log.log(Level.SEVERE, "Error adding new session", ex);
 		}
 	}
+
 	public void changeSessionId(Session session) {
-		session.setId(UUID.randomUUID().toString());
+		session.setId(new ObjectId().toString());
 	}
+
 	public Session createEmptySession() {
 		MongoSession session = new MongoSession(this);
-		session.setId(UUID.randomUUID().toString());
+		session.setId(new ObjectId().toString());
 		session.setMaxInactiveInterval(maxInactiveInterval);
 		session.setValid(true);
 		session.setCreationTime(System.currentTimeMillis());
@@ -75,6 +116,7 @@ public class MongoSessionManager extends StandardManager implements {
 		log.fine("Created new empty session " + session.getIdInternal());
 		return session;
 	}
+
 	public Session createSession(java.lang.String sessionId) {
 		StandardSession session = (MongoSession) createEmptySession();
 
@@ -86,9 +128,11 @@ public class MongoSessionManager extends StandardManager implements {
 
 		return session;
 	}
+
 	public Session findSession(String id) throws IOException {
 		return loadSession(id);
 	}
+
 	public Session[] findSessions() {
 		try {
 			List<Session> sessions = new ArrayList<Session>();
@@ -100,6 +144,7 @@ public class MongoSessionManager extends StandardManager implements {
 			throw new RuntimeException(ex);
 		}
 	}
+
 	public void remove(Session session) {
 		log.fine("Removing session ID : " + session.getId());
 		BasicDBObject query = new BasicDBObject();
@@ -114,17 +159,7 @@ public class MongoSessionManager extends StandardManager implements {
 			currentSession.remove();
 		}
 	}
-	public void start() throws LifecycleException {
-		    for (Valve valve : getContext().getPipeline().getValves()) {
-		      if (valve instanceof MongoSessionTrackerValve) {
-		        trackerValve = (MongoSessionTrackerValve) valve;
-		        trackerValve.setMongoManager(this);
-		        log.info("Attached to Mongo Tracker Valve");
-		        break;
-		      }
-		    }
-		    super.start();
-	 }
+
 	public void backgroundProcess() {
 		processExpires();
 	}
@@ -147,6 +182,93 @@ public class MongoSessionManager extends StandardManager implements {
 			log.log(Level.SEVERE,
 					"Error cleaning session in Mongo Session Store", e);
 		}
+	}
+
+	protected void startInternal() throws LifecycleException {
+
+		for (Valve valve : this.getContext().getPipeline().getValves()) {
+			if (valve instanceof MongoSessionTrackerValve) {
+				trackerValve = (MongoSessionTrackerValve) valve;
+				trackerValve.setMongoManager(this);
+				log.info("Attached to Mongo Tracker Valve");
+				break;
+			}
+		}
+		try {
+			initSerializer();
+		} catch (ClassNotFoundException e) {
+			log.log(Level.SEVERE, "Unable to load serializer", e);
+			throw new LifecycleException(e);
+		} catch (InstantiationException e) {
+			log.log(Level.SEVERE, "Unable to load serializer", e);
+			throw new LifecycleException(e);
+		} catch (IllegalAccessException e) {
+			log.log(Level.SEVERE, "Unable to load serializer", e);
+			throw new LifecycleException(e);
+		}
+		log.info("Will expire sessions after " + getMaxInactiveInterval()
+				+ " seconds");
+		initDbConnection();
+	}
+
+	protected void stopInternal() throws LifecycleException {
+		mongo.close();
+	}
+
+	public static String getDatabase() {
+		return database;
+	}
+
+	public static String getHost() {
+		return host;
+	}
+
+	public static int getPort() {
+		return port;
+	}
+
+	@SuppressWarnings("deprecation")
+	private void initDbConnection() throws LifecycleException {
+		try {
+			String[] hosts = getHost().split(",");
+
+			List<ServerAddress> addrs = new ArrayList<ServerAddress>();
+
+			for (String host : hosts) {
+				addrs.add(new ServerAddress(host, getPort()));
+			}
+			mongo = new MongoClient(addrs);
+			db = mongo.getDB(getDatabase());
+			if (slaveOk) {
+				db.slaveOk();
+			}
+			getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
+			log.info("Connected to Mongo " + host + "/" + database
+					+ " for session storage, slaveOk=" + slaveOk + ", "
+					+ (getMaxInactiveInterval() * 1000) + " session live time");
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new LifecycleException("Error Connecting to Mongo", e);
+		}
+	}
+
+	private void initSerializer() throws ClassNotFoundException,
+			IllegalAccessException, InstantiationException {
+		log.info("Attempting to use serializer :" + serializationStrategyClass);
+		serializer = (Serializer) Class.forName(serializationStrategyClass)
+				.newInstance();
+
+		Loader loader = null;
+
+		if (context != null) {
+			loader = context.getLoader();
+		}
+		ClassLoader classLoader = null;
+
+		if (loader != null) {
+			classLoader = loader.getClassLoader();
+		}
+		serializer.setClassLoader(classLoader);
 	}
 
 	// =============================================
@@ -270,7 +392,10 @@ public class MongoSessionManager extends StandardManager implements {
 		return db.getCollection("sessions");
 	}
 
-	public String getInfo() {
-		return "Mongo Session Manager";
+	public void load() throws ClassNotFoundException, IOException {
 	}
+
+	public void unload() throws IOException {
+	}
+
 }
