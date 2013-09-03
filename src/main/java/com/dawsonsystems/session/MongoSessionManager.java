@@ -145,6 +145,19 @@ public class MongoSessionManager extends ManagerBase {
 		}
 	}
 
+	public void expireSession(String sessionId) {
+		Session s = null;
+		try {
+			s = this.findSession(sessionId);
+		} catch (IOException e) {
+			return;
+		}
+		if (s == null) {
+			return;
+		}
+		s.expire();
+	}
+
 	public void remove(Session session) {
 		log.fine("Removing session ID : " + session.getId());
 		BasicDBObject query = new BasicDBObject();
