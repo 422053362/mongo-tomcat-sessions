@@ -1,0 +1,35 @@
+#surefire
+#Tue Sep 03 22:04:31 CST 2013
+testClassesDirectory=E\:\\GitHub\\mongo-tomcat-sessions\\target\\test-classes
+classPathUrl.4=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-util\\8.0.0-RC1\\tomcat-util-8.0.0-RC1.jar
+classPathUrl.3=C\:\\Users\\peng\\.m2\\repository\\javax\\servlet\\javax.servlet-api\\3.1.0\\javax.servlet-api-3.1.0.jar
+classPathUrl.2=C\:\\Users\\peng\\.m2\\repository\\org\\mongodb\\mongo-java-driver\\2.11.2\\mongo-java-driver-2.11.2.jar
+useManifestOnlyJar=true
+classPathUrl.1=E\:\\GitHub\\mongo-tomcat-sessions\\target\\classes
+reportsDirectory=E\:\\GitHub\\mongo-tomcat-sessions\\target\\surefire-reports
+classPathUrl.0=E\:\\GitHub\\mongo-tomcat-sessions\\target\\test-classes
+dirscanner.0=directoryScannerOptions
+providerConfiguration=org.apache.maven.surefire.junit.JUnit3Provider
+testSuiteDefinitionTestSourceDirectory=E\:\\GitHub\\mongo-tomcat-sessions\\src\\test\\java
+surefireClassPathUrl.1=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\maven\\surefire\\surefire-api\\2.7.1\\surefire-api-2.7.1.jar
+surefireClassPathUrl.0=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\maven\\surefire\\surefire-junit3\\2.7.1\\surefire-junit3-2.7.1.jar
+report.2=org.apache.maven.surefire.report.XMLReporter
+useSystemClassLoader=true
+report.1=org.apache.maven.surefire.report.BriefFileReporter
+report.0=org.apache.maven.surefire.report.ForkingConsoleReporter
+excludes0=**/*$*
+isTrimStackTrace=true
+dirscanner.0.params=E\:\\GitHub\\mongo-tomcat-sessions\\target\\test-classes|[**/Test*.java, **/*Test.java, **/*TestCase.java]|[**/*$*]
+includes2=**/*TestCase.java
+enableAssertions=true
+includes1=**/*Test.java
+failIfNoTests=false
+includes0=**/Test*.java
+dirscanner.0.types=java.io.File|java.util.ArrayList|java.util.ArrayList
+classPathUrl.10=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-jni\\8.0.0-RC1\\tomcat-jni-8.0.0-RC1.jar
+classPathUrl.9=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-annotations-api\\8.0.0-RC1\\tomcat-annotations-api-8.0.0-RC1.jar
+classPathUrl.8=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-servlet-api\\8.0.0-RC1\\tomcat-servlet-api-8.0.0-RC1.jar
+classPathUrl.7=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-catalina\\8.0.0-RC1\\tomcat-catalina-8.0.0-RC1.jar
+childDelegation=false
+classPathUrl.6=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-api\\8.0.0-RC1\\tomcat-api-8.0.0-RC1.jar
+classPathUrl.5=C\:\\Users\\peng\\.m2\\repository\\org\\apache\\tomcat\\tomcat-juli\\8.0.0-RC1\\tomcat-juli-8.0.0-RC1.jar
