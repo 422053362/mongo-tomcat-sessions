@@ -227,6 +227,9 @@ public class MongoSessionManager extends ManagerBase implements Lifecycle {
 				break;
 			}
 		}
+		
+		this.setState(LifecycleState.STARTING);
+		
 		try {
 			initSerializer();
 		} catch (ClassNotFoundException e) {
@@ -341,7 +344,8 @@ public class MongoSessionManager extends ManagerBase implements Lifecycle {
 				}
 			}
 
-			Map<Object, Object> data = serializer.serializeFrom(standardsession);
+			Map<Object, Object> data = serializer
+					.serializeFrom(standardsession);
 
 			BasicDBObject dbsession = new BasicDBObject();
 			dbsession.put("_id", standardsession.getId());
@@ -393,8 +397,11 @@ public class MongoSessionManager extends ManagerBase implements Lifecycle {
 				return ret;
 			}
 
-			String map  = dbsession.get("data").toString();
-			Map<Object,Object> data = JSON.parseObject(map, new TypeReference<Map<Object,Object>>() {}); ;
+			String map = dbsession.get("data").toString();
+			Map<Object, Object> data = JSON.parseObject(map,
+					new TypeReference<Map<Object, Object>>() {
+					});
+			;
 
 			session = (MongoSession) createEmptySession();
 			session.setId(id);
