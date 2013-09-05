@@ -20,46 +20,34 @@
 
 package com.dawsonsystems.session;
 
-import org.apache.catalina.session.StandardSession;
-import org.apache.catalina.util.CustomObjectInputStream;
-
 import javax.servlet.http.HttpSession;
 import java.io.*;
-
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class JavaSerializer implements Serializer {
-  private ClassLoader loader;
 
-  @Override
-  public void setClassLoader(ClassLoader loader) {
-    this.loader = loader;
-  }
+	public Map<Object, Object> serializeFrom(HttpSession session)
+			throws IOException {
+		Map<Object, Object> map = new HashMap<Object, Object>();
+		Enumeration<String> names = session.getAttributeNames();
+		while (names.hasMoreElements()) {
+			String key = names.nextElement();
+			Object value = session.getAttribute(key);
+			map.put(key, value);
+		}
+		return map;
+	}
 
-  @Override
-  public byte[] serializeFrom(HttpSession session) throws IOException {
-
-    StandardSession standardSession = (StandardSession) session;
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
-    oos.writeLong(standardSession.getCreationTime());
-    standardSession.writeObjectData(oos);
-
-    oos.close();
-
-    return bos.toByteArray();
-  }
-
-  @Override
-  public HttpSession deserializeInto(byte[] data, HttpSession session) throws IOException, ClassNotFoundException {
-
-    StandardSession standardSession = (StandardSession) session;
-
-    BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
-
-    ObjectInputStream ois = new CustomObjectInputStream(bis, loader);
-    standardSession.setCreationTime(ois.readLong());
-    standardSession.readObjectData(ois);
-
-    return session;
-  }
+	public HttpSession deserializeInto(Map<Object, Object> data,
+			HttpSession session) throws IOException, ClassNotFoundException {
+		MongoSession standardSession = (MongoSession) session;
+		Set<Object> keys = data.keySet();
+        for(Object key:keys){
+        	standardSession.setAttribute((String) key, data.get(key));
+        }
+		return session;
+	}
 }

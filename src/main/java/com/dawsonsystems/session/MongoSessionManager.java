@@ -20,6 +20,9 @@
 
 package com.dawsonsystems.session;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.mongodb.*;
 
 import org.apache.catalina.*;
@@ -31,11 +34,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MongoSessionManager extends ManagerBase {
+public class MongoSessionManager extends ManagerBase implements Lifecycle {
 	private static Logger log = Logger.getLogger("MongoManager");
 	protected static String host = "localhost";
 	protected static int port = 27017;
@@ -44,14 +48,35 @@ public class MongoSessionManager extends ManagerBase {
 	protected DB db;
 	protected boolean slaveOk;
 
+	public static void setLog(Logger log) {
+		MongoSessionManager.log = log;
+	}
+
+	public static void setHost(String host) {
+		MongoSessionManager.host = host;
+	}
+
+	public static void setPort(int port) {
+		MongoSessionManager.port = port;
+	}
+
+	public static void setDatabase(String database) {
+		MongoSessionManager.database = database;
+	}
+
 	private MongoSessionTrackerValve trackerValve;
 	private ThreadLocal<StandardSession> currentSession = new ThreadLocal<StandardSession>();
 	private Serializer serializer;
-
 	// Either 'kryo' or 'java'
 	private String serializationStrategyClass = "com.dawsonsystems.session.JavaSerializer";
-	private Context context;
-	private int maxInactiveInterval;
+
+	public Context getContext() {
+		return super.getContext();
+	}
+
+	public void setContext(Context context) {
+		super.setContext(context);
+	}
 
 	public void setMongo(Mongo mongo) {
 		this.mongo = mongo;
@@ -79,10 +104,6 @@ public class MongoSessionManager extends ManagerBase {
 
 	public void setSerializationStrategyClass(String serializationStrategyClass) {
 		this.serializationStrategyClass = serializationStrategyClass;
-	}
-
-	public void setContext(Context context) {
-		this.context = context;
 	}
 
 	public String getInfo() {
@@ -198,7 +219,6 @@ public class MongoSessionManager extends ManagerBase {
 	}
 
 	protected void startInternal() throws LifecycleException {
-
 		for (Valve valve : this.getContext().getPipeline().getValves()) {
 			if (valve instanceof MongoSessionTrackerValve) {
 				trackerValve = (MongoSessionTrackerValve) valve;
@@ -240,6 +260,38 @@ public class MongoSessionManager extends ManagerBase {
 		return port;
 	}
 
+	public static Logger getLog() {
+		return log;
+	}
+
+	public Mongo getMongo() {
+		return mongo;
+	}
+
+	public DB getDb() {
+		return db;
+	}
+
+	public boolean isSlaveOk() {
+		return slaveOk;
+	}
+
+	public MongoSessionTrackerValve getTrackerValve() {
+		return trackerValve;
+	}
+
+	public ThreadLocal<StandardSession> getCurrentSession() {
+		return currentSession;
+	}
+
+	public Serializer getSerializer() {
+		return serializer;
+	}
+
+	public String getSerializationStrategyClass() {
+		return serializationStrategyClass;
+	}
+
 	@SuppressWarnings("deprecation")
 	private void initDbConnection() throws LifecycleException {
 		try {
@@ -270,18 +322,6 @@ public class MongoSessionManager extends ManagerBase {
 		log.info("Attempting to use serializer :" + serializationStrategyClass);
 		serializer = (Serializer) Class.forName(serializationStrategyClass)
 				.newInstance();
-
-		Loader loader = null;
-
-		if (context != null) {
-			loader = context.getLoader();
-		}
-		ClassLoader classLoader = null;
-
-		if (loader != null) {
-			classLoader = loader.getClassLoader();
-		}
-		serializer.setClassLoader(classLoader);
 	}
 
 	// =============================================
@@ -301,11 +341,11 @@ public class MongoSessionManager extends ManagerBase {
 				}
 			}
 
-			byte[] data = serializer.serializeFrom(standardsession);
+			Map<Object, Object> data = serializer.serializeFrom(standardsession);
 
 			BasicDBObject dbsession = new BasicDBObject();
 			dbsession.put("_id", standardsession.getId());
-			dbsession.put("data", data);
+			dbsession.put("data", JSONObject.toJSONString(data));
 			dbsession.put("lastmodified", System.currentTimeMillis());
 
 			BasicDBObject query = new BasicDBObject();
@@ -353,7 +393,8 @@ public class MongoSessionManager extends ManagerBase {
 				return ret;
 			}
 
-			byte[] data = (byte[]) dbsession.get("data");
+			String map  = dbsession.get("data").toString();
+			Map<Object,Object> data = JSON.parseObject(map, new TypeReference<Map<Object,Object>>() {}); ;
 
 			session = (MongoSession) createEmptySession();
 			session.setId(id);
